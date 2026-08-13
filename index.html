@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Map Drill</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #171e2e;
+    --panel-2: #1e2740;
+    --border: #2a3550;
+    --text: #e6ecf7;
+    --muted: #93a0bd;
+    --accent: #4f8cff;
+    --good: #2ec16b;
+    --bad: #ff5c6c;
+    --warn: #f5b642;
+    --gap: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+  }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  header {
+    display: flex; align-items: center; gap: var(--gap);
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  header .brand { font-weight: 700; letter-spacing: .3px; font-size: 16px; }
+  header .brand span { color: var(--accent); }
+  .spacer { flex: 1; }
+  .pill {
+    font-size: 12px; color: var(--muted);
+    background: var(--panel-2); border: 1px solid var(--border);
+    padding: 5px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  .pill b { color: var(--text); }
+
+  .filters { display: flex; gap: 6px; }
+  .chip {
+    font-size: 12px; cursor: pointer; user-select: none;
+    padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+  }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  #promptbar {
+    display: flex; align-items: center; gap: var(--gap);
+    padding: 12px 16px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+    min-height: 58px;
+  }
+  #prompt-label { font-size: 13px; color: var(--muted); }
+  #prompt-name { font-size: 22px; font-weight: 700; }
+  #prompt-cat {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+    padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  #prompt-cat.political { color: #8fb4ff; border-color: #35507f; }
+  #prompt-cat.geographical { color: #7fe0a8; border-color: #2f6b47; }
+
+  #map-wrap { position: relative; flex: 1; }
+  #map { position: absolute; inset: 0; background: #e9e9e9; }
+  /* Grayscale ONLY the map tiles -> black & white base map.
+     Vector overlays (blue rivers, emoji, guess/answer pins) keep their color. */
+  .leaflet-tile-pane { filter: grayscale(1) contrast(1.04); }
+
+  /* mountain range marker */
+  .mtn-icon { font-size: 17px; line-height: 17px; text-align: center;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
+
+  /* result banner overlay */
+  #result {
+    position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+    z-index: 500; pointer-events: none;
+    background: rgba(23,30,46,.95); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 16px; text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,.4);
+    display: none; max-width: 90vw;
+  }
+  #result .dist { font-size: 18px; font-weight: 700; }
+  #result .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* rating / footer controls */
+  footer {
+    display: flex; align-items: center; gap: var(--gap);
+    padding: 12px 16px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .hint { font-size: 13px; color: var(--muted); }
+  .rate { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .rate .lbl { font-size: 13px; color: var(--muted); margin-right: 2px; }
+  .btn {
+    cursor: pointer; border: 1px solid var(--border); background: var(--panel-2);
+    color: var(--text); border-radius: 10px; padding: 9px 14px; font-size: 14px;
+    font-weight: 600; transition: transform .05s ease, background .15s ease;
+  }
+  .btn:hover { background: #26314f; }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.ghost { background: transparent; }
+  .rate .btn { min-width: 42px; text-align: center; }
+  .r1 { border-color: #7a3038; } .r1:hover { background: #3a1f24; }
+  .r2 { border-color: #7a5330; } .r2:hover { background: #3a2e1f; }
+  .r3 { border-color: #6f6f30; } .r3:hover { background: #35351f; }
+  .r4 { border-color: #3f6f3a; } .r4:hover { background: #24381f; }
+  .r5 { border-color: #2f6b47; } .r5:hover { background: #1f3a2a; }
+
+  .hidden { display: none !important; }
+
+  /* leaflet marker labels */
+  .place-label {
+    background: rgba(23,30,46,.92); border: 1px solid var(--border);
+    color: var(--text); font-size: 12px; font-weight: 600;
+    padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+  }
+  .river-line { stroke: #2b7fff; }
+
+  @media (max-width: 640px) {
+    #prompt-name { font-size: 18px; }
+    header { padding: 8px 12px; gap: 8px; }
+    .pill.hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">Map<span>Drill</span></div>
+    <div class="filters" id="filters">
+      <div class="chip active" data-cat="all">All</div>
+      <div class="chip" data-cat="political">Political</div>
+      <div class="chip" data-cat="geographical">Geographical</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="pill hide-sm">Streak <b id="stat-streak">0</b></div>
+    <div class="pill">Seen <b id="stat-seen">0</b></div>
+    <div class="pill">Avg dist <b id="stat-avg">–</b></div>
+    <div class="pill hide-sm">Remaining <b id="stat-remaining">0</b></div>
+    <button class="btn ghost" id="btn-reset" title="Reset all progress">Reset</button>
+  </header>
+
+  <div id="promptbar">
+    <div>
+      <div id="prompt-label">Click where this is on the map:</div>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:2px;">
+        <span id="prompt-name">–</span>
+        <span id="prompt-cat" class="political">political</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="map-wrap">
+    <div id="map"></div>
+    <div id="result">
+      <div class="dist" id="result-dist"></div>
+      <div class="sub" id="result-sub"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div id="foot-guess" class="hint">Click to place your guess, then <b>double-click</b> to lock it in.</div>
+    <div id="foot-rate" class="rate hidden">
+      <span class="lbl">How well did you know it?</span>
+      <button class="btn r1" data-rate="1">1</button>
+      <button class="btn r2" data-rate="2">2</button>
+      <button class="btn r3" data-rate="3">3</button>
+      <button class="btn r4" data-rate="4">4</button>
+      <button class="btn r5" data-rate="5">5</button>
+      <span class="hint" style="margin-left:6px;">1 = no idea · 5 = nailed it</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="btn-skip">Skip</button>
+  </footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="places.js"></script>
+<script src="overlays.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const STORAGE_KEY = "mapdrill.v1";
+  // Fallback sample used only if places.js failed to load (e.g. static preview).
+  const DEFAULT_PLACES = [
+    { name: "France", category: "political", lat: 46.2276, lng: 2.2137 },
+    { name: "Japan", category: "political", lat: 36.2048, lng: 138.2529 },
+    { name: "Brazil", category: "political", lat: -14.2350, lng: -51.9253 },
+    { name: "Egypt", category: "political", lat: 26.8206, lng: 30.8025 },
+    { name: "Nile River", category: "geographical", lat: 30.0444, lng: 31.2357 },
+    { name: "Mount Everest", category: "geographical", lat: 27.9881, lng: 86.9250 },
+    { name: "Sahara Desert", category: "geographical", lat: 23.4162, lng: 25.6628 },
+    { name: "Himalayas", category: "geographical", lat: 28.5983, lng: 83.9311 }
+  ];
+  const SRC = (window.PLACES && window.PLACES.length) ? window.PLACES : DEFAULT_PLACES;
+  const PLACES = SRC.filter(p => typeof p.lat === "number" && typeof p.lng === "number");
+
+  if (!PLACES.length) {
+    document.getElementById("prompt-name").textContent = "No places loaded";
+    document.getElementById("prompt-label").textContent = "places.js is empty.";
+  }
+
+  // ---------- persistence ----------
+  // per-place stats keyed by name: { box, seen, lastRate, sumDist, nDist }
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch (e) { return {}; }
+  }
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch (e) { /* storage unavailable (private mode / data: URL) — keep going in-memory */ }
+  }
+  let state = loadState();
+  function statFor(name) {
+    if (!state[name]) state[name] = { box: 1, seen: 0, lastRate: 0, sumDist: 0, nDist: 0 };
+    return state[name];
+  }
+
+  // ---------- map ----------
+  const map = L.map("map", { worldCopyJump: true, minZoom: 2, doubleClickZoom: false }).setView([20, 0], 2);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: "abcd", maxZoom: 19
+  }).addTo(map);
+
+  // ---- ocean boundary lines (dashed purple, always visible) ----
+  (window.OCEAN_BOUNDS || []).forEach(b => {
+    L.polyline(b.coords, {
+      color: "#9d5cff", weight: 2, opacity: .8, dashArray: "7,7",
+      lineCap: "round", interactive: false
+    }).addTo(map);
+  });
+
+  // ---- reference overlays: blue rivers + mountain markers (always visible) ----
+  (window.RIVERS || []).forEach(r => {
+    L.polyline(r.coords, {
+      className: "river-line", color: "#2b7fff", weight: 2.5, opacity: .95,
+      lineJoin: "round", lineCap: "round", interactive: false
+    }).addTo(map);
+  });
+  const isMountain = n => /mountain|alps|himalaya|hindu kush/i.test(n);
+  PLACES.filter(p => isMountain(p.name)).forEach(p => {
+    L.marker([p.lat, p.lng], {
+      interactive: false, keyboard: false,
+      icon: L.divIcon({ className: "mtn-icon", html: "⛰️", iconSize: [17,17], iconAnchor: [8,8] })
+    }).addTo(map);
+  });
+
+  let guessMarker = null, answerMarker = null, lineLayer = null;
+
+  function clearMarkers() {
+    [guessMarker, answerMarker, lineLayer].forEach(l => { if (l) map.removeLayer(l); });
+    guessMarker = answerMarker = lineLayer = null;
+  }
+
+  function haversine(a, b) {
+    const R = 6371, toR = d => d * Math.PI / 180;
+    const dLat = toR(b.lat - a.lat), dLng = toR(b.lng - a.lng);
+    const s = Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+  function fmtDist(km) {
+    if (km < 1) return Math.round(km * 1000) + " m";
+    if (km < 100) return km.toFixed(1) + " km";
+    return Math.round(km) + " km";
+  }
+
+  // ---------- queue (Brainscape-style leitner) ----------
+  let activeCat = "all";
+  let current = null;      // current place object
+  let answered = false;
+  let sessionSeen = 0, sessionStreak = 0, sessionDistSum = 0, sessionDistN = 0;
+
+  function pool() {
+    return PLACES.filter(p => activeCat === "all" || p.category === activeCat);
+  }
+  // pick next: weight by low box (needs practice) and least-recently seen
+  function pickNext() {
+    const items = pool();
+    if (!items.length) return null;
+    // weight = 1 / box^1.4  (lower box -> higher weight), plus a nudge for unseen
+    let best = [];
+    let bestScore = -Infinity;
+    for (const p of items) {
+      if (p === current) continue;
+      const s = statFor(p.name);
+      const unseenBonus = s.seen === 0 ? 2.5 : 0;
+      const weight = 1 / Math.pow(s.box, 1.4) + unseenBonus;
+      // add small deterministic jitter via seen count so we don't loop identically
+      const score = weight - s.seen * 0.001;
+      if (score > bestScore) { bestScore = score; best = [p]; }
+      else if (score === bestScore) best.push(p);
+    }
+    if (!best.length) best = items.filter(p => p !== current);
+    if (!best.length) best = items;
+    return best[Math.floor(Math.random() * best.length)];
+  }
+
+  const el = id => document.getElementById(id);
+
+  function showPrompt(p) {
+    el("prompt-name").textContent = p.name;
+    const cat = el("prompt-cat");
+    cat.textContent = p.category;
+    cat.className = p.category;
+  }
+
+  function updateStats() {
+    el("stat-seen").textContent = sessionSeen;
+    el("stat-streak").textContent = sessionStreak;
+    el("stat-avg").textContent = sessionDistN ? fmtDist(sessionDistSum / sessionDistN) : "–";
+    const remaining = pool().filter(p => statFor(p.name).box < 5).length;
+    el("stat-remaining").textContent = remaining;
+  }
+
+  function nextCard() {
+    answered = false;
+    pendingGuess = null;
+    clearMarkers();
+    map.stop();                              // cancel any in-flight reveal animation
+    map.setView([20, 0], 2, { animate: false }); // instant reset to full world view
+    el("result").style.display = "none";
+    el("foot-guess").innerHTML = "Click to place your guess, then <b>double-click</b> to lock it in.";
+    el("foot-guess").classList.remove("hidden");
+    el("foot-rate").classList.add("hidden");
+    el("btn-skip").classList.remove("hidden");
+    current = pickNext();
+    if (!current) { el("prompt-name").textContent = "Done 🎉"; el("prompt-cat").className = ""; el("prompt-cat").textContent=""; return; }
+    showPrompt(current);
+    updateStats();
+  }
+
+  function reveal(guessLatLng) {
+    if (answered || !current) return;
+    answered = true;
+    const truth = { lat: current.lat, lng: current.lng };
+    const dist = guessLatLng ? haversine(guessLatLng, truth) : null;
+
+    // answer marker + label
+    answerMarker = L.circleMarker([truth.lat, truth.lng], {
+      radius: 8, color: "#2ec16b", fillColor: "#2ec16b", fillOpacity: .9, weight: 2
+    }).addTo(map);
+    answerMarker.bindTooltip(current.name, { permanent: true, direction: "top", className: "place-label", offset: [0,-8] }).openTooltip();
+
+    if (guessLatLng) {
+      lineLayer = L.polyline([[guessLatLng.lat, guessLatLng.lng], [truth.lat, truth.lng]], {
+        color: "#ff8c1a", weight: 2, dashArray: "5,6", opacity: .9
+      }).addTo(map);
+      const bounds = L.latLngBounds([[guessLatLng.lat, guessLatLng.lng], [truth.lat, truth.lng]]).pad(0.4);
+      map.fitBounds(bounds, { maxZoom: 6, animate: false });
+    } else {
+      map.setView([truth.lat, truth.lng], 4, { animate: false });
+    }
+
+    // result banner
+    const rb = el("result");
+    if (dist != null) {
+      el("result-dist").textContent = fmtDist(dist) + " off";
+      let q = dist < 150 ? "Excellent!" : dist < 600 ? "Close." : dist < 2000 ? "In the region." : "Way off.";
+      el("result-dist").style.color = dist < 150 ? "var(--good)" : dist < 2000 ? "var(--warn)" : "var(--bad)";
+      el("result-sub").textContent = q + " That's " + current.name + ".";
+    } else {
+      el("result-dist").textContent = current.name;
+      el("result-dist").style.color = "var(--text)";
+      el("result-sub").textContent = "Here it is.";
+    }
+    rb.style.display = "block";
+
+    // track session distance
+    if (dist != null) { sessionDistSum += dist; sessionDistN++;
+      const s = statFor(current.name); s.sumDist += dist; s.nDist++; }
+
+    // switch footer to rating (rate = auto-advance)
+    el("foot-guess").classList.add("hidden");
+    el("foot-rate").classList.remove("hidden");
+    el("btn-skip").classList.add("hidden");
+    updateStats();
+  }
+
+  function applyRating(r) {
+    if (!current) return;
+    const s = statFor(current.name);
+    s.seen++;
+    s.lastRate = r;
+    // leitner-ish: high rating advances box, low rating drops it
+    if (r >= 4) s.box = Math.min(5, s.box + 1);
+    else if (r === 3) s.box = Math.min(5, s.box + 0); // hold
+    else s.box = 1; // 1-2 back to start
+    sessionSeen++;
+    if (r >= 4) sessionStreak++; else sessionStreak = 0;
+    saveState();
+    nextCard();
+  }
+
+  // ---------- events ----------
+  let pendingGuess = null;
+
+  map.on("click", e => { if (!answered && current) setProvisional(e.latlng); });
+  map.on("dblclick", e => { if (!answered && current) { setProvisional(e.latlng); lockIn(); } });
+
+  // single click positions / moves a tentative pin
+  function setProvisional(latlng) {
+    pendingGuess = latlng;
+    if (guessMarker) {
+      guessMarker.setLatLng(latlng);
+    } else {
+      guessMarker = L.circleMarker(latlng, {
+        radius: 7, color: "#ff8c1a", fillColor: "#ff8c1a", fillOpacity: .35, weight: 2, dashArray: "3,3"
+      }).addTo(map);
+    }
+    el("foot-guess").innerHTML = "Guess placed — <b>double-click</b> to lock it in.";
+  }
+
+  // double click commits the guess and reveals the answer
+  function lockIn() {
+    if (!pendingGuess || answered) return;
+    if (guessMarker) guessMarker.setStyle({ fillOpacity: .9, dashArray: null });
+    reveal(pendingGuess);
+  }
+
+  el("filters").addEventListener("click", e => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    document.querySelectorAll("#filters .chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    activeCat = chip.dataset.cat;
+    nextCard();
+  });
+
+  el("foot-rate").addEventListener("click", e => {
+    const b = e.target.closest("[data-rate]");
+    if (b) applyRating(parseInt(b.dataset.rate, 10));
+  });
+
+  el("btn-skip").addEventListener("click", () => { if (!answered) nextCard(); });
+  el("btn-reset").addEventListener("click", () => {
+    if (confirm("Reset all learning progress?")) {
+      state = {}; localStorage.removeItem(STORAGE_KEY);
+      sessionSeen = sessionStreak = sessionDistSum = sessionDistN = 0;
+      nextCard();
+    }
+  });
+
+  // keyboard: 1-5 rate, Space/Enter next, S skip
+  window.addEventListener("keydown", e => {
+    if (answered && e.key >= "1" && e.key <= "5") { applyRating(parseInt(e.key,10)); e.preventDefault(); }
+    else if (!answered && (e.key === "s" || e.key === "S")) { nextCard(); }
+  });
+
+  // go
+  nextCard();
+})();
+</script>
+</body>
+</html>

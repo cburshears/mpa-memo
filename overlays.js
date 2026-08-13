@@ -1,0 +1,35 @@
+// Visual reference overlays drawn on top of the black & white map.
+// RIVERS: approximate courses of the major/listed rivers, drawn in blue.
+// (Rough but recognizable paths — they orient you, they don't label anything.)
+// Mountains are derived automatically in index.html from any place whose name
+// looks like a range (Mountains / Alps / Himalayas / Hindu Kush), marked with ⛰️.
+window.RIVERS = [
+  { name: "Mississippi River", coords: [[47.2,-95.2],[44.9,-93.1],[41.5,-90.6],[38.6,-90.2],[35.1,-90.1],[32.3,-91.1],[30.0,-91.0],[29.15,-89.25]] },
+  { name: "Rio Grande", coords: [[37.7,-106.6],[35.2,-106.6],[31.8,-106.5],[29.3,-100.9],[26.4,-99.0],[25.95,-97.15]] },
+  { name: "Colorado River", coords: [[40.4,-105.8],[39.1,-108.6],[37.0,-111.5],[36.1,-112.1],[36.0,-114.4],[34.5,-114.4],[32.7,-114.6],[31.9,-114.8]] },
+  { name: "St. Lawrence River", coords: [[44.1,-76.4],[44.9,-74.9],[46.8,-71.2],[47.9,-69.5],[48.9,-64.5]] },
+  { name: "Amazon River", coords: [[-10.7,-73.7],[-7.5,-70.0],[-4.9,-65.4],[-3.3,-60.0],[-2.5,-54.7],[-1.4,-51.7],[-0.7,-50.0]] },
+  { name: "Danube River", coords: [[48.1,8.2],[48.6,13.5],[48.2,16.4],[47.5,19.05],[44.9,20.4],[44.6,22.6],[44.1,27.0],[45.2,29.7]] },
+  { name: "Nile River", coords: [[-0.4,33.2],[3.5,31.6],[9.6,30.5],[15.6,32.5],[18.2,30.8],[24.1,32.9],[27.2,31.2],[30.0,31.2],[31.5,30.4]] },
+  { name: "Niger River", coords: [[9.4,-10.7],[11.9,-8.9],[14.9,-4.2],[16.8,-3.0],[15.9,0.6],[13.5,3.4],[9.6,6.5],[7.8,6.7],[5.3,6.4]] },
+  { name: "Congo River", coords: [[-11.6,27.5],[-9.0,25.9],[-5.9,26.8],[-1.6,25.9],[0.5,20.0],[-0.9,17.6],[-3.1,16.2],[-4.3,15.3],[-6.05,12.4]] },
+  { name: "Euphrates River", coords: [[39.4,38.3],[37.1,38.8],[36.0,40.0],[35.0,40.4],[34.3,42.1],[32.5,44.4],[31.4,47.0],[30.5,47.9]] },
+  { name: "Tigris River", coords: [[37.9,40.8],[37.2,42.4],[35.6,43.3],[34.2,44.2],[33.3,44.4],[31.9,46.0],[31.0,47.4],[30.0,48.6]] },
+  { name: "Yangtze River", coords: [[33.0,92.0],[31.0,97.0],[27.0,100.0],[28.8,104.6],[30.7,111.3],[30.6,114.3],[32.0,118.8],[31.4,121.8]] },
+  { name: "Huang He River", coords: [[34.9,96.0],[35.9,102.0],[37.4,101.8],[40.2,104.0],[40.5,111.0],[38.5,112.9],[36.0,114.5],[35.9,116.7],[37.4,118.5],[37.7,119.2]] },
+  { name: "Ganges River", coords: [[30.9,78.9],[29.9,78.2],[27.4,80.9],[25.4,83.0],[25.6,85.1],[24.6,87.9],[23.2,89.9],[22.3,90.5]] },
+  { name: "Indus River", coords: [[32.5,79.7],[35.3,76.0],[34.0,72.6],[33.0,71.5],[31.6,71.0],[28.4,69.4],[26.0,68.0],[24.0,67.4]] }
+];
+
+// OCEAN_BOUNDS: conventional lines separating the oceans, drawn dashed.
+// The three southern lines run from a continent's tip down to Antarctica.
+window.OCEAN_BOUNDS = [
+  { name: "Atlantic / Pacific (Drake Passage)",      coords: [[-55.98,-67.27],[-62.0,-67.27],[-68.5,-67.27]] },
+  { name: "Atlantic / Indian (Cape Agulhas, 20°E)",  coords: [[-34.83,20.0],[-52.0,20.0],[-69.5,20.0]] },
+  { name: "Indian / Pacific (south of Australia)",   coords: [[-43.64,146.82],[-55.0,146.82],[-66.5,146.82]] },
+  { name: "Pacific / Arctic (Bering Strait)",        coords: [[66.08,-169.72],[65.60,-168.10]] },
+  { name: "Atlantic / Arctic (Greenland–Norway)",    coords: [[68.0,-25.0],[66.5,-18.5],[64.5,-13.5],[62.0,-7.0],[61.0,5.0]] },
+  { name: "Atlantic / Arctic (Davis Strait)",        coords: [[66.6,-61.0],[66.6,-53.0]] },
+  { name: "Indian / Pacific (Indonesian arc)",       coords: [[-6.8,105.2],[-8.5,113.5],[-9.8,119.5],[-10.9,123.8],[-12.5,127.5],[-13.9,129.5]] },
+  { name: "Indian / Pacific (Malacca Strait)",       coords: [[1.4,103.5],[1.2,104.6]] }
+];
