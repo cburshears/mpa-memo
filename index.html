@@ -174,7 +174,7 @@
   </div>
 
   <footer>
-    <div id="foot-guess" class="hint">Click the map to place your guess.</div>
+    <div id="foot-guess" class="hint">Click to place your guess, then <b>double-click</b> to lock it in.</div>
     <div id="foot-rate" class="rate hidden">
       <span class="lbl">How well did you know it?</span>
       <button class="btn r1" data-rate="1">1</button>
@@ -186,7 +186,6 @@
     </div>
     <div class="spacer"></div>
     <button class="btn" id="btn-skip">Skip</button>
-    <button class="btn primary hidden" id="btn-next">Next →</button>
   </footer>
 </div>
 
@@ -235,10 +234,18 @@
   }
 
   // ---------- map ----------
-  const map = L.map("map", { worldCopyJump: true, minZoom: 2 }).setView([20, 0], 2);
+  const map = L.map("map", { worldCopyJump: true, minZoom: 2, doubleClickZoom: false }).setView([20, 0], 2);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
     attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: "abcd", maxZoom: 19
   }).addTo(map);
+
+  // ---- ocean boundary lines (dashed purple, always visible) ----
+  (window.OCEAN_BOUNDS || []).forEach(b => {
+    L.polyline(b.coords, {
+      color: "#9d5cff", weight: 2, opacity: .8, dashArray: "7,7",
+      lineCap: "round", interactive: false
+    }).addTo(map);
+  });
 
   // ---- reference overlays: blue rivers + mountain markers (always visible) ----
   (window.RIVERS || []).forEach(r => {
@@ -324,11 +331,14 @@
 
   function nextCard() {
     answered = false;
+    pendingGuess = null;
     clearMarkers();
+    map.stop();                              // cancel any in-flight reveal animation
+    map.setView([20, 0], 2, { animate: false }); // instant reset to full world view
     el("result").style.display = "none";
+    el("foot-guess").innerHTML = "Click to place your guess, then <b>double-click</b> to lock it in.";
     el("foot-guess").classList.remove("hidden");
     el("foot-rate").classList.add("hidden");
-    el("btn-next").classList.add("hidden");
     el("btn-skip").classList.remove("hidden");
     current = pickNext();
     if (!current) { el("prompt-name").textContent = "Done 🎉"; el("prompt-cat").className = ""; el("prompt-cat").textContent=""; return; }
@@ -353,9 +363,9 @@
         color: "#ff8c1a", weight: 2, dashArray: "5,6", opacity: .9
       }).addTo(map);
       const bounds = L.latLngBounds([[guessLatLng.lat, guessLatLng.lng], [truth.lat, truth.lng]]).pad(0.4);
-      map.fitBounds(bounds, { maxZoom: 6, animate: true });
+      map.fitBounds(bounds, { maxZoom: 6, animate: false });
     } else {
-      map.setView([truth.lat, truth.lng], 4, { animate: true });
+      map.setView([truth.lat, truth.lng], 4, { animate: false });
     }
 
     // result banner
@@ -376,11 +386,10 @@
     if (dist != null) { sessionDistSum += dist; sessionDistN++;
       const s = statFor(current.name); s.sumDist += dist; s.nDist++; }
 
-    // switch footer to rating
+    // switch footer to rating (rate = auto-advance)
     el("foot-guess").classList.add("hidden");
     el("foot-rate").classList.remove("hidden");
     el("btn-skip").classList.add("hidden");
-    el("btn-next").classList.remove("hidden");
     updateStats();
   }
 
@@ -400,14 +409,29 @@
   }
 
   // ---------- events ----------
-  map.on("click", e => { if (!answered && current) { placeGuess(e.latlng); } });
+  let pendingGuess = null;
 
-  function placeGuess(latlng) {
-    if (guessMarker) map.removeLayer(guessMarker);
-    guessMarker = L.circleMarker([latlng.lat, latlng.lng], {
-      radius: 7, color: "#ff8c1a", fillColor: "#ff8c1a", fillOpacity: .9, weight: 2
-    }).addTo(map);
-    reveal(latlng);
+  map.on("click", e => { if (!answered && current) setProvisional(e.latlng); });
+  map.on("dblclick", e => { if (!answered && current) { setProvisional(e.latlng); lockIn(); } });
+
+  // single click positions / moves a tentative pin
+  function setProvisional(latlng) {
+    pendingGuess = latlng;
+    if (guessMarker) {
+      guessMarker.setLatLng(latlng);
+    } else {
+      guessMarker = L.circleMarker(latlng, {
+        radius: 7, color: "#ff8c1a", fillColor: "#ff8c1a", fillOpacity: .35, weight: 2, dashArray: "3,3"
+      }).addTo(map);
+    }
+    el("foot-guess").innerHTML = "Guess placed — <b>double-click</b> to lock it in.";
+  }
+
+  // double click commits the guess and reveals the answer
+  function lockIn() {
+    if (!pendingGuess || answered) return;
+    if (guessMarker) guessMarker.setStyle({ fillOpacity: .9, dashArray: null });
+    reveal(pendingGuess);
   }
 
   el("filters").addEventListener("click", e => {
@@ -424,7 +448,6 @@
     if (b) applyRating(parseInt(b.dataset.rate, 10));
   });
 
-  el("btn-next").addEventListener("click", () => { if (answered) applyRating(current ? statFor(current.name).lastRate || 3 : 3); });
   el("btn-skip").addEventListener("click", () => { if (!answered) nextCard(); });
   el("btn-reset").addEventListener("click", () => {
     if (confirm("Reset all learning progress?")) {
@@ -438,7 +461,6 @@
   window.addEventListener("keydown", e => {
     if (answered && e.key >= "1" && e.key <= "5") { applyRating(parseInt(e.key,10)); e.preventDefault(); }
     else if (!answered && (e.key === "s" || e.key === "S")) { nextCard(); }
-    else if (answered && (e.key === "Enter" || e.key === " ")) { el("btn-next").click(); e.preventDefault(); }
   });
 
   // go

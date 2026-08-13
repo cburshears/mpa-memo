@@ -20,3 +20,16 @@ window.RIVERS = [
   { name: "Ganges River", coords: [[30.9,78.9],[29.9,78.2],[27.4,80.9],[25.4,83.0],[25.6,85.1],[24.6,87.9],[23.2,89.9],[22.3,90.5]] },
   { name: "Indus River", coords: [[32.5,79.7],[35.3,76.0],[34.0,72.6],[33.0,71.5],[31.6,71.0],[28.4,69.4],[26.0,68.0],[24.0,67.4]] }
 ];
+
+// OCEAN_BOUNDS: conventional lines separating the oceans, drawn dashed.
+// The three southern lines run from a continent's tip down to Antarctica.
+window.OCEAN_BOUNDS = [
+  { name: "Atlantic / Pacific (Drake Passage)",      coords: [[-55.98,-67.27],[-62.0,-67.27],[-68.5,-67.27]] },
+  { name: "Atlantic / Indian (Cape Agulhas, 20°E)",  coords: [[-34.83,20.0],[-52.0,20.0],[-69.5,20.0]] },
+  { name: "Indian / Pacific (south of Australia)",   coords: [[-43.64,146.82],[-55.0,146.82],[-66.5,146.82]] },
+  { name: "Pacific / Arctic (Bering Strait)",        coords: [[66.08,-169.72],[65.60,-168.10]] },
+  { name: "Atlantic / Arctic (Greenland–Norway)",    coords: [[68.0,-25.0],[66.5,-18.5],[64.5,-13.5],[62.0,-7.0],[61.0,5.0]] },
+  { name: "Atlantic / Arctic (Davis Strait)",        coords: [[66.6,-61.0],[66.6,-53.0]] },
+  { name: "Indian / Pacific (Indonesian arc)",       coords: [[-6.8,105.2],[-8.5,113.5],[-9.8,119.5],[-10.9,123.8],[-12.5,127.5],[-13.9,129.5]] },
+  { name: "Indian / Pacific (Malacca Strait)",       coords: [[1.4,103.5],[1.2,104.6]] }
+];
